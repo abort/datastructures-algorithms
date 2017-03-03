@@ -12,8 +12,8 @@ object PrimitiveCalculator {
   def computeSteps(n : Int) : (Int, Iterable[Int]) = {
     // We do not need a map, because we know we will pass all integers (thanks to i + 1), hash code computations slow us down for nothing
     // We do not use stepMap(0)
-    // We use max value to denote uninitialized, for performance reasons
-    val stepMap = Array.fill[Int](n + 1)(Int.MaxValue)
+    // We use n value to denote uninitialized, for performance reasons
+    val stepMap = Array.fill[Int](n + 1)(n)
     stepMap(1) = 0
 
     // We distinguish both cases for more performance
