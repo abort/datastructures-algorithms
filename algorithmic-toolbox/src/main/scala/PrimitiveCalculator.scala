@@ -12,28 +12,22 @@ object PrimitiveCalculator {
   def computeSteps(n : Int) : (Int, Iterable[Int]) = {
     // We do not need a map, because we know we will pass all integers (thanks to i + 1), hash code computations slow us down for nothing
     // We do not use stepMap(0)
-    // We assume we will never reach max value, options would have been nicer (or doubles with infinite), but this has better performance
+    // We use max value to denote uninitialized, for performance reasons
     val stepMap = Array.fill[Int](n + 1)(Int.MaxValue)
     stepMap(1) = 0
 
-    def computeOptimalStepCount(x : Int) = {
-      // possible memoized options to use (comprehension might slow us down, but whatever)
-      val seq = (x - 1) +: (for (i <- 2 to 3 if x % i == 0) yield (x / i))
-      // gets minimum amount of steps for either one of the options
-      seq.map(stepMap(_)).min
-    }
+    // We distinguish both cases for more performance
     def precomputeStep(i : Int, value : Int) = if (i <= n) stepMap(i) = Math.min(stepMap(i), value)
+    def storePrecomputedStep(i: Int, value: Int) = stepMap(i) = Math.min(stepMap(i), value)
 
     // We compute up to n
-    for (i <- 1 to n) {
-      val currentOptimum = stepMap(i)
-      val optimum = if (currentOptimum != Int.MaxValue) currentOptimum else (computeOptimalStepCount(i) + 1)
-      stepMap(i) = optimum
+    for (i <- 1 until n) {
+      val nextOptimum = stepMap(i) + 1
 
-      // Precompute (not necessary for correct answers, but just to save time)
-      precomputeStep(i * 3, optimum + 1)
-      precomputeStep(i * 2, optimum + 1)
-      precomputeStep(i + 1, optimum + 1)
+      precomputeStep(i * 3, nextOptimum)
+      precomputeStep(i * 2, nextOptimum)
+      // Differentiation for performance reasons
+      storePrecomputedStep(i + 1, nextOptimum)
     }
 
     // Build trace
