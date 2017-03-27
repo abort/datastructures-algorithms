@@ -16,55 +16,33 @@ object TreeHeight {
 
     def getMaxHeight(): Int = {
       var maxHeight = 0
+      val stack = mutable.Stack[Int]()
       for (index <- 0 until nodeCount) {
+
         if (heights(index) == 0) {
-          var height = 0
-          var node = index
-          var run = true
-          while (run && node != -1) {
-            if (heights(node) != 0) {
-              height += heights(node)
-              run = false
+          stack.push(index)
+          // Can be optimized by counting height (size of stack) and then unrolling (like in the previous code)
+          while (stack.nonEmpty) {
+            val head = stack.head
+
+            val parent = parents(head)
+            if (parent == -1) {
+              heights(head) = 1
+              stack.pop
             }
-            else {
-              node = parents(node)
-              height += 1
+            else if (heights(parent) == 0) {
+              stack.push(parent)
+            }
+            else if (heights(parent) != 0) {
+              heights(stack.pop) = heights(parent) + 1
             }
           }
 
-          maxHeight = Math.max(maxHeight, height)
-          run = true
-          node = index
-          while (run && node != -1) {
-            if (heights(node) != 0) run = false
-            else {
-              heights(node) = height
-              height -= 1
-              node = parents(node)
-            }
-          }
+          maxHeight = Math.max(maxHeight, heights(index))
         }
       }
 
       maxHeight
-    }
-
-    def computeHeight(i: Int): Int = {
-      if (heights(i) != 0) return heights(i)
-
-      val stack = mutable.Stack[Int](i)
-      while (stack.nonEmpty) {
-        val popped = stack.pop
-        println(s"pop: ${popped}")
-        val parent = parents(popped)
-        if (parent == -1) {
-          heights(popped) = 1
-        }
-        else if (heights(parent) == 0) stack.push(parent)
-        else heights(popped) = heights(parent) + 1
-      }
-
-      heights(i)
     }
 
     println(getMaxHeight)
