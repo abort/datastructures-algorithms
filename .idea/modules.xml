@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/algorithmic-toolbox/.idea/modules/algorithmic-toolbox.iml" filepath="$PROJECT_DIR$/algorithmic-toolbox/.idea/modules/algorithmic-toolbox.iml" />
+      <module fileurl="file://$PROJECT_DIR$/algorithmic-toolbox/.idea/modules/algorithmic-toolbox-build.iml" filepath="$PROJECT_DIR$/algorithmic-toolbox/.idea/modules/algorithmic-toolbox-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/datastructures-algorithms.iml" filepath="$PROJECT_DIR$/.idea/datastructures-algorithms.iml" />
     </modules>
   </component>
