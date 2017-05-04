@@ -1,38 +1,52 @@
-import java.io.{OutputStreamWriter, PrintWriter}
+import java.io.{BufferedReader, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.util
+import java.util.StringTokenizer
 
-import scala.collection.mutable.Queue
-import scala.io.Source
+import scala.collection.mutable.ArrayBuffer
 
 object BuildHeap {
+  object InputReader {
+    val reader : BufferedReader = new BufferedReader(new InputStreamReader(System.in))
+    var tokenizer : StringTokenizer = null
+
+    private def next() : String = {
+      while (tokenizer == null || !tokenizer.hasMoreTokens) {
+        tokenizer = new StringTokenizer(reader.readLine())
+      }
+      tokenizer.nextToken()
+    }
+
+    def nextInt() : Int = next().toInt
+    def nextLong() : Long = next().toLong
+  }
+
   def main(args: Array[String]): Unit = {
     val out = new PrintWriter(new OutputStreamWriter(System.out))
+    val n = InputReader.nextInt()
+    val items = Array.ofDim[Long](n)
+    for (i <- 0 until n) {
+      items(i) = InputReader.nextLong()
+    }
 
-
-    val input = Source.stdin.getLines().take(2).toSeq
-    val items = input(1).mkString.split(' ').map(_.toInt)
-
-    val heap = buildHeapIterative(items)
+    val heap = buildHeap(items)
     out.println(heap.size)
     heap.foreach { case (a, b) => out.println(a + " " + b) }
     out.close()
   }
 
-  def buildHeapIterative(items : Array[Int]) : Queue[(Int, Int)] = {
-    val heap = 0 +: items
-    val queue = Queue.empty[(Int, Int)]
+  def buildHeapIterative(items : Array[Long]) : Seq[(Int, Int)] = {
+    val heap = items
+    val queue = ArrayBuffer[(Int, Int)]()
     val work = new util.Stack[Int]()
 
-    // take root nodes
-    for (i <- 1 to (heap.length / 2)) {
-      //sink(heap, i, queue)
+    for (i <- 0 until heap.length / 2) {
       work.push(i)
     }
 
     while (!work.empty()) {
       val i = work.pop()
       var minIndex = i
-      val childrenOffset = i * 2
+      val childrenOffset = i * 2 + 1
       if (childrenOffset < heap.length && heap(childrenOffset) < heap(minIndex)) {
         minIndex = childrenOffset
       }
@@ -42,7 +56,7 @@ object BuildHeap {
 
       // in case a child has a lower value
       if (minIndex != i) {
-        queue.enqueue((i - 1, minIndex - 1))
+        queue += ((i, minIndex))
         val rootValue = heap(i)
 
         heap(i) = heap(minIndex)
@@ -56,25 +70,25 @@ object BuildHeap {
     queue
   }
 
-  def buildHeap(items : Array[Int]) : Queue[(Int, Int)] = {
-    val heap = 0 +: items
-    val queue = Queue.empty[(Int, Int)]
-    val work = new util.Stack[Int]()
+  def buildHeap(heap : Array[Long]) : Seq[(Int, Int)] = {
+    //val queue = Queue.empty[(Int, Int)]
+    val queue = ArrayBuffer[(Int, Int)]()
 
     // take root nodes
-    for (i <- (heap.length / 2) to 1 by - 1) {
+    for (i <- (heap.length / 2 - 1) to 0 by - 1) {
+      // sink(heap, i, queue)
       sink(heap, i, queue)
     }
 
     queue
   }
 
-  def sink(heap: Array[Int], i: Int, queue: Queue[(Int, Int)]): Unit = {
-    if (i >= heap.length - 1 || i * 2 >= heap.length) return
-
+  def sink(heap: Array[Long], i: Int, queue: ArrayBuffer[(Int, Int)]): Unit = {
     // select minimal element
-    val childrenOffset = i * 2
     var minIndex = i
+    val childrenOffset = i * 2 + 1
+    if (childrenOffset >= heap.length) return // for speed, but redundant
+
     if (childrenOffset < heap.length && heap(childrenOffset) < heap(minIndex)) {
       minIndex = childrenOffset
     }
@@ -84,7 +98,8 @@ object BuildHeap {
 
     // in case a child has a lower value
     if (minIndex != i) {
-      queue.enqueue((i - 1, minIndex - 1))
+      val tuple = (i, minIndex)
+      queue += tuple
       val rootValue = heap(i)
       heap(i) = heap(minIndex)
       heap(minIndex) = rootValue
