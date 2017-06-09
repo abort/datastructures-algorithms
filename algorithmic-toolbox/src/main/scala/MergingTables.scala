@@ -38,6 +38,7 @@ object MergingTables {
     val maxTableSizes = mergeTables(tables, initialMax, merges)
     maxTableSizes.foreach(out.println)
     out.close()
+
   }
 
   case class Table(id : Int, var rows : Int) extends Ordered[Table] {
