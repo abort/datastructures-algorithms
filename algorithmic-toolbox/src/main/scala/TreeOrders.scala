@@ -10,6 +10,7 @@ object TreeOrders {
     def left: Option[Node] = if (hasLeft) Some(indicesToNodes(leftIndex)) else None
     def right: Option[Node] = if (hasRight) Some(indicesToNodes(rightIndex)) else None
 
+
     def inOrder(f: Int => Unit) : Unit = {
       left.map(_.inOrder(f))
       f(key)
@@ -29,8 +30,7 @@ object TreeOrders {
     }
   }
 
-
-  def main(args: Array[String]): Unit = {
+  def runTreeOrders : Unit = {
     val vertices = StdIn.readInt
     if (vertices == 0) return
 
@@ -42,13 +42,28 @@ object TreeOrders {
     }
 
     val root = indicesToNodes(0)
-    var work = Seq.empty[Int]
-    def add(x : Int) = work = work :+ x
+    val work = Array.ofDim[Int](3 * vertices)
+    var workIndex = 0
+    def add(x : Int) = {
+      work(workIndex) = x
+      workIndex += 1
+    }
     root.inOrder(add)
     root.preOrder(add)
     root.postOrder(add)
     for (i <- 0 to 3) {
       println(work.slice(i * vertices, i * vertices + vertices).mkString(" "))
     }
+  }
+
+  def main(args: Array[String]): Unit = {
+    new Thread(null, new Runnable() {
+      def run() {
+        try runTreeOrders
+        catch {
+          case _ : Throwable =>
+        }
+      }
+    }, "", 1 << 26).start()
   }
 }
