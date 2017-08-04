@@ -5,10 +5,18 @@ object SetRangeSum {
     def hasNoChildren : Boolean = left.isEmpty && right.isEmpty
     def hasOneChild : Boolean = (left.isDefined && right.isEmpty) || (left.isEmpty && right.isDefined)
     def hasParent : Boolean = parent.nonEmpty
+
+    def inOrder(f: Int => Boolean) : Unit = {
+      left.map(_.inOrder(f))
+      if (f(key)) return
+      right.map(_.inOrder(f))
+    }
   }
 
+
   def runSetRangeSum() : Unit = {
-    import BinaryTree._ // TODO: optimize with splaytree
+    //import SplayTree._ // TODO: optimize with splaytree
+    import BinaryTree._
 
     val m = 1000000001
     var x = 0
@@ -32,7 +40,7 @@ object SetRangeSum {
         }
         case "s" => {
 
-          x = sum(root, (line(1).toInt + x) % m, (line(2).toInt + x) % m)
+          x = BinaryTree.sum(root, (line(1).toInt + x) % m, (line(2).toInt + x) % m)
           println(x)
         }
       }
@@ -42,13 +50,13 @@ object SetRangeSum {
   object SplayTree {
     def find(root : Option[Node], n : Int): Option[Node] = {
       val node = BinaryTree.find(root, n)
-      BinaryTree.splay(root, node)
+      BinaryTree.splay(root, n)
       node
     }
 
     def add(root : Option[Node], n : Int) : Node = {
       val result = BinaryTree.add(root, n)
-      BinaryTree.splay(root, Some(result)).get
+      BinaryTree.splay(Some(result), n).get
     }
 
     def del(root : Option[Node], n : Int) : Option[Node] = {
@@ -71,10 +79,61 @@ object SetRangeSum {
   }
   object BinaryTree {
     def splay(root : Option[Node], n : Int) : Option[Node] = {
-      root
+      if (root.isEmpty) return root
+
+      var node = root.get
+      val key = node.key
+      if (n < key) {
+        if (node.left.isEmpty) return root
+
+        val leftNode = node.left.get
+        val leftKey = leftNode.key
+        if (n < leftKey) {
+          leftNode.left = splay(leftNode.left, n)
+          node = rotateRight(node)
+        }
+        else if (n > leftKey) {
+          leftNode.right = splay(leftNode.right, n)
+          if (leftNode.right.isDefined)
+            node.left = Some(rotateLeft(node))
+        }
+
+        if (node.left.isEmpty) return Some(node)
+        else return Some(rotateRight(node))
+      }
+      else if (n > key) {
+        if (node.right.isEmpty) return root
+
+        val rightNode = node.right.get
+        val rightKey = rightNode.key
+        if (n < rightKey) {
+          rightNode.left = splay(rightNode.left, n)
+          if (rightNode.left.isDefined)
+            node.right = Some(rotateRight(node.right.get))
+        }
+        else if (n > rightKey) {
+          rightNode.right = splay(rightNode.right, n)
+          node = rotateLeft(node)
+        }
+
+        if (node.right.isEmpty) return Some(node)
+        else return Some(rotateLeft(node))
+      }
+      else root
     }
-    def splay(root : Option[Node], node: Option[Node]) : Option[Node] = {
-      root
+
+    private def rotateRight(n : Node) : Node = {
+      val x = n.right.get
+      n.right = x.left
+      x.left = Some(n)
+      x
+    }
+
+    private def rotateLeft(n : Node) : Node = {
+      val x = n.right.get
+      n.right = x.left
+      x.left = Some(n)
+      x
     }
 
     def add(root : Option[Node], n : Int) : Node = {
@@ -129,10 +188,20 @@ object SetRangeSum {
     }
 
     def sum(root : Option[Node], left : Int, right : Int) : Int = {
+      if (root.isEmpty) return 0
       var total = 0
-      for (i <- left to right) {
-        total = total + find(root, i).map(_.key).getOrElse(0)
+      def f(x : Int) : Boolean = {
+        if (x >= left && x <= right) {
+          total += x
+        }
+
+        x > right
       }
+      //      for (i <- left to right) {
+//        total = total + find(root, i).map(_.key).getOrElse(0)
+//      }
+
+      root.get.inOrder(f)
       total
     }
 
