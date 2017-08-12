@@ -19,7 +19,7 @@ object StronglyConnected {
       inbound = inbound.updated(w, inbound(w) + 1)
     }
 
-    println(computeStronglyConnectedComponents(edges, inbound).size)
+    println(computeStronglyConnectedComponents(edges, inbound))
   }
 
   private def reverse(edges: Edges) : Edges = {
@@ -32,7 +32,7 @@ object StronglyConnected {
     reversed
   }
 
-  private def computeStronglyConnectedComponents(edges : Edges, inbound : IndexedSeq[Int]) : Set[Set[Int]] = {
+  private def computeStronglyConnectedComponents(edges : Edges, inbound : IndexedSeq[Int]) : Int = {
     def empty() : IndexedSeq[Boolean] = IndexedSeq.fill(edges.size)(false)
 
     var visited : IndexedSeq[Boolean] = empty()
@@ -48,16 +48,13 @@ object StronglyConnected {
       ordered = x +: ordered
     }
 
-    def computeConnections(v : Int) : Set[Int] = {
+    def computeConnections(v : Int) : Unit = {
       visited = visited.updated(v, true)
 
-      var connections = Set(v)
       for (i <- edges(v)) {
         if (!visited(i))
-          connections = connections ++ computeConnections(i)
+          computeConnections(i)
       }
-
-      connections
     }
 
     for (v <- reversed.indices.tail) {
@@ -67,11 +64,12 @@ object StronglyConnected {
       if (!visited(v) && inbound(v) != 0) sort(v)
     }
 
-    var components = Set.empty[Set[Int]]
+    var components = 0
     visited = empty()
     for (v <- ordered) {
       if (!visited(v)) {
-        components = components + computeConnections(v)
+        computeConnections(v)
+        components = components + 1
       }
     }
     components
