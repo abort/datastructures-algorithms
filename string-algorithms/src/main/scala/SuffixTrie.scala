@@ -1,15 +1,51 @@
+import scala.collection.mutable
 import scala.io.StdIn
 
 object SuffixTrie {
-  def main(args: Array[String]): Unit = computeSuffixTrie(StdIn.readLine).foreach(println)
-
-  object Node {
-    def Root(sequence : Array[Char]) : Node = new Node(0, 0, sequence.length, Map.empty, null, sequence)
+  def main(args: Array[String]): Unit = {
+    val input = StdIn.readLine
+    var output = Iterable.empty[String]
+    import org.scalameter._
+    val time = measure {
+      output = computeSuffixTrie(input)
+    }
+    //output.foreach(println)
+    println(s"Took $time")
   }
-  class Node(var start : Int, var end : Int, val level : Int, var children: Map[Char, Node], var parent: Node, val sequence : Array[Char]) {
+
+  type Offset = (Int, Int)
+  object Node {
+    def Root(sequence : Array[Char]) : Node = new Node((0, sequence.length), 0, Map.empty, null, sequence)
+  }
+  // Keep level as low as possible!
+  class Node(private var offset : Offset, var level : Int, var children: Map[Char, Node], var parent: Node, val sequence : Array[Char]) extends Ordered[Node] {
+    var start : Int = offset._1
+    var end : Int = offset._2
+
+    override def compare(that: Node): Int = {
+      if (start < that.start) start.compareTo(that.start)
+      else if (start == that.start) end.compareTo(that.end)
+      else that.start.compareTo(start)
+    }
+
     def isRoot: Boolean = start == 0 && end == sequence.length
-    def value : String = sequence.subSequence(start, end).toString
-    def toSequence: Seq[String] = children.values.flatMap(desc => desc.value +: desc.toSequence)(collection.breakOut)
+    def value(cache : mutable.Map[Offset, String]) : String = {
+      if (cache.contains((start, end))) {
+        // println("Cached!!!")
+        cache((start, end))
+      }
+      else if (cache.contains((start, end - 1))) {
+        val result = cache((start, end - 1)) + sequence(end)
+        cache.put((start, end), result)
+        result
+      }
+      else {
+        val result = sequence.subSequence(start, end).toString
+        cache.put((start, end), result)
+        result
+      }
+    }
+    def toSequence(cache : mutable.Map[Offset, String] = mutable.Map.empty): Seq[String] = children.values.toSeq.sorted.flatMap(desc => desc.value(cache) +: desc.toSequence(cache))(collection.breakOut)
     def isOnlyChild: Boolean = parent != null && parent.children.size == 1
   }
 
@@ -25,25 +61,31 @@ object SuffixTrie {
         val c = sequence.charAt(i)
         if (p.children.contains(c)) p = p.children(c)
         else {
-          // Spawn
-          val newNode = new Node(i, i + 1, p.level + 1, Map.empty, p, sequence)
-          p.children = p.children.updated(c, newNode)
-          leaves = leaves - p + newNode
+          val offset = (i, i + 1)
+          val newLevel = p.level + 1
+          // Spawn lazily
+          val node = new Node(offset, newLevel, Map.empty, p, sequence)
+          p.children = p.children.updated(c, node)
+          leaves = leaves - p + node
           p = p.children(c)
-          nodes = nodes + newNode
+          nodes = nodes + node
         }
       }
     }
     val complement = compress(nodes, leaves)
     // complement.map is faster than toSequence most likely
-    complement.map(_.value)
+    root.toSequence(mutable.Map.empty[Offset, String])
+
+    // complement.toSeq.sorted
+//    val cache = mutable.Map.empty[Offset, String]
+//    complement.toSeq.sorted.map(_.value(cache))
   }
 
   private def compress(nodes : Set[Node], leaves : Set[Node]) : Set[Node] = {
     val nonLeaves = nodes.diff(leaves)
     var toProcess = nonLeaves
     var complement = nodes
-    def compress(node : Node) : Unit = {
+    @inline def compress(node : Node) : Unit = {
       var n = node
       while (n.parent != null && !n.parent.isRoot && n.isOnlyChild) {
         val p = n.parent
