@@ -1,52 +1,48 @@
-import scala.collection.mutable
 import scala.io.StdIn
 
 object SuffixTrie {
   def main(args: Array[String]): Unit = {
     val input = StdIn.readLine
-    var output = Iterable.empty[String]
-    import org.scalameter._
-    val time = measure {
-      output = computeSuffixTrie(input)
-    }
-    //output.foreach(println)
-    println(s"Took $time")
+    computeSuffixTrie(input).foreach(println)
+//    var output = Iterable.empty[String]
+//    import org.scalameter._
+//    val time = measure {
+//      output = computeSuffixTrie(input)
+//    }
+//    //output.foreach(println)
+//    println(s"Took $time")
   }
 
   type Offset = (Int, Int)
   object Node {
-    def Root(sequence : Array[Char]) : Node = new Node((0, sequence.length), 0, Map.empty, null, sequence)
+    def Root(sequence : Array[Char]) : Node = new Node(0, sequence.length, 0, Map.empty, null, sequence)
   }
-  // Keep level as low as possible!
-  class Node(private var offset : Offset, var level : Int, var children: Map[Char, Node], var parent: Node, val sequence : Array[Char]) extends Ordered[Node] {
-    var start : Int = offset._1
-    var end : Int = offset._2
+  object Cache {
+    def apply(): Cache = new Cache(-1, -1, "")
+  }
+  class Cache(var start : Int, var end : Int, var output : String)
+  class Node(var start : Int, var end : Int, var level : Int, var children: Map[Char, Node], var parent: Node, val sequence : Array[Char]) extends Ordered[Node] {
+    @inline def isChar : Boolean = end - start == 1
 
     override def compare(that: Node): Int = {
-      if (start < that.start) start.compareTo(that.start)
-      else if (start == that.start) end.compareTo(that.end)
-      else that.start.compareTo(start)
+      if (start < that.start) start - that.start
+      else if (start == that.start) end - that.end
+      else start - that.start
     }
 
     def isRoot: Boolean = start == 0 && end == sequence.length
-    def value(cache : mutable.Map[Offset, String]) : String = {
-      if (cache.contains((start, end))) {
-        // println("Cached!!!")
-        cache((start, end))
-      }
-      else if (cache.contains((start, end - 1))) {
-        val result = cache((start, end - 1)) + sequence(end)
-        cache.put((start, end), result)
-        result
-      }
-      else {
-        val result = sequence.subSequence(start, end).toString
-        cache.put((start, end), result)
-        result
-      }
+    def value(cache : Cache) : String = {
+      if (start == cache.start) cache.output = cache.output + sequence.subSequence(cache.end, end).toString
+      else if (isChar) cache.output = sequence.charAt(start).toString
+      else cache.output = sequence.subSequence(start, end).toString
+
+      cache.start = start
+      cache.end = end
+      cache.output
     }
-    def toSequence(cache : mutable.Map[Offset, String] = mutable.Map.empty): Seq[String] = children.values.toSeq.sorted.flatMap(desc => desc.value(cache) +: desc.toSequence(cache))(collection.breakOut)
-    def isOnlyChild: Boolean = parent != null && parent.children.size == 1
+    def length : Int = children.values.size + children.values.map(desc => desc.length).sum
+    def toSequence(cache : Cache = Cache()): List[String] = children.values.toList.sorted.flatMap(desc => desc.value(cache) +: desc.toSequence(cache))(collection.breakOut)
+    def isCompressionCandidate: Boolean = parent != null && parent.children.size == 1 && !parent.isRoot
   }
 
   def computeSuffixTrie(input : String) : Iterable[String] = {
@@ -58,13 +54,11 @@ object SuffixTrie {
     for (offset <- sequence.indices) {
       var p : Node = root
       for (i <- offset until sequence.length) {
-        val c = sequence.charAt(i)
+        val c = sequence(i)
         if (p.children.contains(c)) p = p.children(c)
         else {
-          val offset = (i, i + 1)
-          val newLevel = p.level + 1
           // Spawn lazily
-          val node = new Node(offset, newLevel, Map.empty, p, sequence)
+          val node = new Node(i, i + 1, p.level + 1, Map.empty, p, sequence)
           p.children = p.children.updated(c, node)
           leaves = leaves - p + node
           p = p.children(c)
@@ -72,39 +66,41 @@ object SuffixTrie {
         }
       }
     }
-    val complement = compress(nodes, leaves)
-    // complement.map is faster than toSequence most likely
-    root.toSequence(mutable.Map.empty[Offset, String])
 
-    // complement.toSeq.sorted
-//    val cache = mutable.Map.empty[Offset, String]
-//    complement.toSeq.sorted.map(_.value(cache))
+    val complement = compress(nodes, leaves).toList.sorted
+    // assert(complement.length == root.length)
+
+    // complement.map is faster than root.toSequence() most likely
+    val cache = Cache()
+    complement.map(_.value(cache))
   }
 
   private def compress(nodes : Set[Node], leaves : Set[Node]) : Set[Node] = {
     val nonLeaves = nodes.diff(leaves)
     var toProcess = nonLeaves
     var complement = nodes
-    @inline def compress(node : Node) : Unit = {
+    def compress(node : Node) : Unit = {
       var n = node
-      while (n.parent != null && !n.parent.isRoot && n.isOnlyChild) {
+      while (n.isCompressionCandidate) {
         val p = n.parent
         p.children = n.children
         p.end = n.end
 
-        // n gets deleted
-        val c = n
         toProcess = toProcess - n
         complement = complement - n
+        // n gets deleted
+        val c = n
         n = p
         c.parent = null // prevent loitering
         c.children = Map.empty
       }
     }
+
+    // Bottom up first
     leaves.foreach(compress)
 
     // Sorting to go bottom up in order to be deterministic and compliant to the tests
-    toProcess.filter(_.children.size == 1).toSeq.sortBy(-_.level).map(_.children.head._2).foreach(compress)
+    toProcess.filter(_.children.size == 1).toList.sortBy(-_.level).map(_.children.head._2).foreach(compress)
 
     // Left over nodes
     complement

@@ -5,10 +5,10 @@ import scala.collection.JavaConverters._
 class TestSuffixTrie extends FunSuite with Matchers {
   val instance = new SuffixTreeJava()
   def validateEquality(input : String) : Unit = {
-    val a = SuffixTrie.computeSuffixTrie(input).toSet
-    val b = instance.computeSuffixTreeEdges(input).asScala.toSet
+    val a = SuffixTrie.computeSuffixTrie(input).toSeq.sorted
+    val b = instance.computeSuffixTreeEdges(input).asScala.toSeq.sorted
     a should contain theSameElementsAs b
-    //assert(a == b)
+    assert(a == b)
   }
 
   test("GTGGG$") {
@@ -37,6 +37,9 @@ class TestSuffixTrie extends FunSuite with Matchers {
   }
   test("CTAAATTTGGTAATTCTGCCGGTAAAC$") {
     validateEquality("CTAAATTTGGTAATTCTGCCGGTAAAC$")
+  }
+  test("Test #17") {
+    validateEquality("GTAGCGACGCCTTATGGACTCACGACGGGCTGGACGCTGGCGCTGCCTAGCGTGCTCACAGCCAGATCGTACGTAAGGAGCCACCTGATGCCGGGGGTCC$")
   }
   test("ATTGTCACAACTGCGAGCGGCTAAATTTGGTAATTCTGCCGGTAAACGAAAACAACGACCT$") {
     validateEquality("ATTGTCACAACTGCGAGCGGCTAAATTTGGTAATTCTGCCGGTAAACGAAAACAACGACCT$")
