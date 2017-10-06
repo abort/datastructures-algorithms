@@ -1,5 +1,4 @@
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.io.StdIn
 
 object NonSharedSubstring {
@@ -8,8 +7,7 @@ object NonSharedSubstring {
     val comparisonSequence = StdIn.readLine
 
     val output = computeShortestNonSharedSubString(sequence, comparisonSequence)
-    if (output.isEmpty) println("Provided sequences are the same")
-    else println(output.get)
+    output.foreach(println)
   }
 
 
@@ -18,9 +16,8 @@ object NonSharedSubstring {
   }
   class Node(var start : Int, var end : Int, var children: Map[Char, Node], var parent: Node, val sequence : Array[Char]) {
     lazy val isRoot: Boolean = start == 0 && end == 0
-    lazy val length = end - start
+    lazy val length : Int = end - start
     lazy val value : String = sequence.subSequence(start, end).toString
-    def asSequence: List[String] = children.values.flatMap(desc => desc.value +: desc.asSequence)(collection.breakOut)
 
     @tailrec
     final def traverse(s : String, accumulated : String = "") : Option[String] = {
@@ -92,24 +89,23 @@ object NonSharedSubstring {
     node.children = node.children.updated(sequence(index), newNode)
   }
 
-  def computeShortestNonSharedSubString(input : String, comparisonSequence : String) : Option[String] = {
-    val sequence = if (input.startsWith(comparisonSequence)) input.substring(comparisonSequence.length) else input
-
-    val root = computeSuffixTrie(comparisonSequence + '$')
-    val ordering : Ordering[String] = Ordering.by { s => s.length() }
-    val results  = mutable.PriorityQueue.empty[String](ordering.reverse)
+  def computeShortestNonSharedSubString(sequence : String, comparisonSequence : String) : Option[String] = {
+    val root = computeSuffixTrie(comparisonSequence)
+    var output = Option.empty[String]
+    var minLength = Int.MaxValue
     for (i <- sequence.indices) {
       val result = root.traverse(sequence.substring(i))
-      if (result.isDefined) {
-        results.enqueue(result.get)
-        if (result.get.length == 1) return result // we won't find a smaller example than this for sure :)
+      if (result.exists(_.length < minLength)) {
+        output = result
+        minLength = output.get.length
+        if (minLength == 1) return result // we won't find a smaller example than this for sure :)
       }
     }
-    if (results.nonEmpty) Some(results.dequeue()) else None
+    output
   }
 
   def computeSuffixTrie(input : String) : Node = {
-    val sequence = input.toCharArray
+    val sequence = (input + '$').toCharArray
     val root = Node.Root(sequence)
 
     sequence.indices.foreach(insertSequence(root, _, sequence))
