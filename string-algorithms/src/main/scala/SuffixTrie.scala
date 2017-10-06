@@ -29,6 +29,7 @@ object SuffixTrie {
       else if (start == that.start) end - that.end
       else start - that.start
     }
+    var myValue = value(Cache())
 
     def isRoot: Boolean = start == 0 && end == sequence.length
     def value(cache : Cache) : String = {
@@ -40,9 +41,81 @@ object SuffixTrie {
       cache.end = end
       cache.output
     }
+    def update() : Unit = {
+      myValue = value(Cache())
+      children.values.foreach(_.update())
+    }
     def length : Int = children.values.size + children.values.map(desc => desc.length).sum
+    def get() : List[String] = children.values.flatMap(desc => desc.value(Cache()) +: desc.get()).filter(_.nonEmpty).toList
     def toSequence(cache : Cache = Cache()): List[String] = children.values.toList.sorted.flatMap(desc => desc.value(cache) +: desc.toSequence(cache))(collection.breakOut)
     def isCompressionCandidate: Boolean = parent != null && parent.children.size == 1 && !parent.isRoot
+  }
+
+  def getCommonStringSkip(startPos : Int, existingStartPos : Int, existingEndPos : Int, sequence : Array[Char]) : Int = {
+    if (startPos >= sequence.length || existingStartPos >= sequence.length) return 0
+
+    var i = 0
+    //var j = existingStartPos
+    var stop = false
+    while (!stop && sequence.charAt(startPos + i) == sequence.charAt(existingStartPos + i)) {
+      i += 1
+      stop = i >= sequence.length || (existingStartPos + i) >= sequence.length || (startPos + i) >= sequence.length || (existingStartPos + i) >= existingEndPos
+    }
+
+   // println(s"equal characters for ${sequence.mkString.substring(startPos)} and ${sequence.mkString.substring(existingStartPos)} = $i")
+
+    i
+  }
+
+  def updateTree(root : Node, offset : Int, sequence : Array[Char]) : Unit = {
+    if (offset > sequence.length) return
+    //println(s"Adding: ${sequence.subSequence(offset, sequence.length)}")
+
+    var node = root
+    var index = offset
+    while (node != null && index < sequence.length) {
+      val c = sequence(index)
+      if (node.children.contains(c)) {
+        val subNode = node.children(c)
+        val commonLen = getCommonStringSkip(index, subNode.start, subNode.end, sequence)
+        //if (index + commonLen < sequence.length) println(s"First different char: ${sequence(index + commonLen)} in ${sequence.mkString.substring(index + commonLen)}")
+        if (index + commonLen == sequence.length) { // 100% equality
+          // TODO: increase repeats?
+          return
+        }
+        val splitPoint = index + commonLen
+
+        // there is a divergence...
+        // We have reached the end of subnode, descent further
+
+        if (subNode.end <= subNode.start + commonLen && splitPoint <= sequence.length - 1) {
+          //println(s"descending to ${sequence.subSequence(subNode.start, subNode.end)} with ${sequence(splitPoint - 1)}")
+          index = splitPoint
+          node = subNode
+        }
+        else {
+          // Split on common string and spawn new parent for it
+          //println(s"splitting ${sequence.subSequence(subNode.start, subNode.end)} to ${sequence.subSequence(index, splitPoint)}")
+          val key = sequence(subNode.start + commonLen)
+          val newParent = new Node(index, splitPoint, 0, Map(key -> subNode), null, sequence)
+          subNode.start = subNode.start + commonLen
+          node.children = node.children.updated(c, newParent)
+          index = splitPoint
+          //println(s"new parent: " + newParent.value(Cache()) + "\n\tchildren: " + newParent.children.map { case (k, v) => s"\t\t$k -> ${v.value(Cache())}" }.mkString("\n", "\n", "\n"))
+
+          //println(s"after split descent to ${sequence.subSequence(newParent.start, newParent.end)} with ${sequence.mkString.substring(splitPoint)}")
+          node = newParent
+        }
+      }
+      else {
+        //println(s"parent (root: ${node.isRoot}) has no $c, creating new child ${sequence.subSequence(index, sequence.length)}")
+        val newNode = new Node(index, sequence.length, 0, Map.empty, null, sequence)
+        node.children = node.children.updated(c, newNode)
+        //println(s"parent: " + node.children.map { case (k, v) => s"$k -> ${v.value(Cache())}" }.mkString("\n", "\n", "\n"))
+        node = null
+      }
+    }
+    println()
   }
 
   def computeSuffixTrie(input : String) : Iterable[String] = {
@@ -53,26 +126,19 @@ object SuffixTrie {
 
     for (offset <- sequence.indices) {
       var p : Node = root
-      for (i <- offset until sequence.length) {
-        val c = sequence(i)
-        if (p.children.contains(c)) p = p.children(c)
-        else {
-          // Spawn lazily
-          val node = new Node(i, i + 1, p.level + 1, Map.empty, p, sequence)
-          p.children = p.children.updated(c, node)
-          leaves = leaves - p + node
-          p = p.children(c)
-          nodes = nodes + node
-        }
-      }
+      updateTree(root, offset, sequence)
     }
 
+    /*
     val complement = compress(nodes, leaves).toList.sorted
     // assert(complement.length == root.length)
 
     // complement.map is faster than root.toSequence() most likely
     val cache = Cache()
     complement.map(_.value(cache))
+    */
+    root.update()
+    root.get()
   }
 
   private def compress(nodes : Set[Node], leaves : Set[Node]) : Set[Node] = {
