@@ -3,16 +3,13 @@ import scala.io.StdIn
 object SuffixTrie {
   def main(args: Array[String]): Unit = {
     val input = StdIn.readLine
-    computeSuffixTrie(input).foreach(println)
-    /*
     var output = Iterable.empty[String]
     import org.scalameter._
     val time = measure {
       output = computeSuffixTrie(input)
     }
-    //output.foreach(println)
-    println(s"Took $time")
-    */
+    output.foreach(println)
+    println(s"Took $time to compute")
   }
 
   object Node {

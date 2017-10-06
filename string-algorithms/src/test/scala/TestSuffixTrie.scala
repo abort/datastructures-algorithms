@@ -13,6 +13,9 @@ class TestSuffixTrie extends FunSuite with Matchers {
     assert(a == b)
   }
 
+  test("TTTTTTTTTTTTTTTTTTTT$") {
+    validateEquality("TTTTTTTTTTTTTTTTTTTT$")
+  }
   test("A$") {
     validateEquality("A$")
   }
