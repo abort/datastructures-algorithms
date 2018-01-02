@@ -1,3 +1,5 @@
+import java.util.{Collections, PriorityQueue}
+
 import scala.io.StdIn
 
 object BurrowsWheelerTransform {
@@ -5,8 +7,17 @@ object BurrowsWheelerTransform {
 
   def computeBurrowsWheelerTransform(s : String) : String = {
     val cycles = computeCycles(s)
-    cycles.sorted.foldLeft("")(_ + _.last)
+    val sb = new StringBuilder(s.length)
+    while (!cycles.isEmpty) {
+      val end = cycles.remove()
+      sb.insert(0, end.last)
+    }
+    sb.toString
   }
 
-  private def computeCycles(s : String) : IndexedSeq[String] = s.indices.map(i => s.substring(i) + s.substring(0, i))
+  @inline private def computeCycles(s : String) : PriorityQueue[String] = {
+    val queue = new PriorityQueue[String](s.length, Collections.reverseOrder[String])
+    s.indices.foreach(i => queue.add(s.substring(i) + s.substring(0, i)))
+    queue
+  }
 }
