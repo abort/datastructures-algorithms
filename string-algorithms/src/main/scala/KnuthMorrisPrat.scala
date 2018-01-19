@@ -5,30 +5,30 @@ object KnuthMorrisPrat {
     val pattern = StdIn.readLine
     val genome = StdIn.readLine
 
-    println(computeOccurences(pattern, genome).mkString(" "))
+    println(computeOccurrences(pattern, genome).mkString(" "))
   }
 
-  private def computeOccurences(p : String, text : String) : Iterable[Int] = {
-    val input : String = {
+  private def computeOccurrences(p : String, text : String) : Iterable[Int] = {
+    val input = {
       val s = new StringBuilder(p)
       s.append('$')
       s.append(text)
-      s.toString
+      s.toArray
     }
-    val s = prefix(input)
     val patternToSeparatorLength = p.length
     val doublePatternLength = 2 * p.length
-    s.zipWithIndex.drop(patternToSeparatorLength).filter { case (value, _) => value == p.length }.map(_._2 - doublePatternLength)
+    val s = prefix(input)
+    s.drop(patternToSeparatorLength).collect { case (value, index) if value == patternToSeparatorLength => index - doublePatternLength }
   }
 
-  private def prefix(p : String) : IndexedSeq[Int] = {
-    val s = p.toCharArray
+  @inline private def prefix(s : Array[Char]) : Array[(Int, Int)] = {
     val len = s.length
-    var borders = Vector.fill(len)(0)
+    val borders = Array.ofDim[(Int, Int)](s.length)
+    borders(0) = (0, 0)
     var k = 0
     for (i <- 1 until len) {
       while (k > 0 && s(k) != s(i)) {
-        k = borders(k - 1)
+        k = borders(k - 1)._1
       }
       if (s(k) == s(i)) {
         k = k + 1
@@ -37,7 +37,7 @@ object KnuthMorrisPrat {
         k = 0
       }
 
-      borders = borders.updated(i, k)
+      borders(i) = (k, i)
     }
     borders
   }
